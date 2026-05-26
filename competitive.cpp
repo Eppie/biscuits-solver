@@ -35,7 +35,8 @@
 // Score support: a d6 face f has penalty 6-f (<=5), so 12 d6 <= 60; d8<=7, d10<=9,
 // d12<=11. Max total score = 87. Bound g per state by reachability (see GMAXof).
 //
-// Build: c++ -O3 -mcpu=native -o competitive competitive.cpp   (-march=native on x86)
+// Build: c++ -O3 -mcpu=native -std=c++17 -pthread -o competitive competitive.cpp
+//        (use -march=native instead of -mcpu=native on x86; or just `make competitive`)
 
 #include <cstdio>
 #include <cstdint>
@@ -408,14 +409,12 @@ int main(int argc,char**argv){
     // E[min of N i.i.d. optimal scores] -> Fetterman Fig.13-style baseline
     printf("  E[min score] for N players (all expected-optimal):\n     ");
     for(int N=2;N<=8;++N){
-        double ge=0,Emin=0; // ge=P(>s); P(min=s)=P(>=s)^N - P(>s)^N
-        // iterate s ascending: need P(>=s),P(>s)
-        double tail=1.0; // P(score>=s) starting s=0 is 1
-        double prevtail=1.0;
+        // P(min=s) = P(score>=s)^N - P(score>s)^N; tail = P(score>=s), starts at 1.
+        double Emin=0, tail=1.0;
         for(int s=0;s<=MAXS;++s){
-            double pge=tail-Dfull[s];        // P(>s)
-            double pmin=pow(tail,N)-pow(pge,N);
-            Emin+=s*pmin; tail=pge; (void)prevtail; (void)ge;
+            double pge=tail-Dfull[s];        // P(score>s)
+            Emin += s*(pow(tail,N)-pow(pge,N));
+            tail = pge;
         }
         printf(" N=%d:%.3f", N, Emin);
     }
@@ -447,6 +446,9 @@ int main(int argc,char**argv){
         if(N>eqMaxN) break;
         for(int g=0;g<SZ;++g) Deq[g]=Dfull[g];      // init field = expected-optimal
         printf("  N=%d  fictitious play:\n", N);
+        // Damped fictitious play. Converges tightly for N<=6; large N (>=8) converges
+        // slowly and may hit MAXIT (a non-convergence warning is printed if so). A
+        // decreasing step / Anderson acceleration would tighten large-N — see TODO.
         double alpha=0.5; double delta=0; int it=0; const int MAXIT=120;
         for(it=0; it<MAXIT; ++it){
             auto ti=std::chrono::steady_clock::now();
@@ -466,6 +468,8 @@ int main(int argc,char**argv){
         double naiveVsEq=winShare(Dfull,W);          // expected-optimal vs (N-1) equilibrium opponents
         double eqmean=0; for(int s=0;s<=MAXS;++s) eqmean+=s*Deq[s];
         double eqsd=0;   for(int s=0;s<=MAXS;++s) eqsd+=(s-eqmean)*(s-eqmean)*Deq[s]; eqsd=sqrt(eqsd);
+        if(it>=MAXIT) printf("      WARNING: did not converge in %d iters (L1 delta %.2e); "
+                             "N=%d table is approximate.\n", MAXIT, delta, N);
         printf("  N=%d  conv in %d iters (L1 delta %.1e)\n", N, it, delta);
         printf("        equilibrium score dist: mean=%.4f sd=%.4f  (vs optimal mean=%.4f sd=%.4f)\n",
                eqmean, eqsd, mean, sd);

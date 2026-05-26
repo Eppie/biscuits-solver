@@ -35,7 +35,7 @@ static inline int roll(int s){return (int)(((xr()>>32)*(uint64_t)s)>>32);}
 int main(int argc,char**argv){
     long N=(argc>1)?atol(argv[1]):20000000; solve();
     printf("optimal V(12,1,1,1)=%.6f\n",V[idx(12,1,1,1)]);
-    double sum=0,sumsq=0,rolls=0; auto t0=std::chrono::steady_clock::now();
+    double sum=0,rolls=0; auto t0=std::chrono::steady_clock::now();
     for(long t=0;t<N;++t){int a6=12,a8=1,a10=1,a12=1;int sc=0;
       while(a6+a8+a10+a12>0){ rolls++;
         int h[6]={0,0,0,0,0,0}; for(int j=0;j<a6;++j) h[roll(6)]++;
@@ -57,7 +57,7 @@ int main(int argc,char**argv){
         int keptpen=S6[bk6]+(bk8?p8:0)+(bk10?p10:0)+(bk12?p12:0);
         sc+=totpen-keptpen; a6=bk6;a8=bk8;a10=bk10;a12=bk12;
       }
-      sum+=sc; sumsq+=(double)sc*sc;}
+      sum+=sc;}
     double secs=std::chrono::duration<double>(std::chrono::steady_clock::now()-t0).count();
     double mean=sum/N;
     printf("CARD: %.3f M games/s, %.1f M moves/s  | mean=%.5f (optimal=%.5f, gap=%+.5f)\n",

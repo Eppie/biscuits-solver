@@ -75,7 +75,6 @@ int main(int argc,char**argv){
       if(a6+a8+a10+a12!=total) continue;
       int S=idx(a6,a8,a10,a12); long m=(long)brng[S].size(); if(!m) continue;
       uint64_t* RNG=brng[S].data(); int* SC=bscore[S].data();
-      int bfull = a8*4+a10*2+a12;
 
       for(long off=0; off<m; off+=CH){
         int n=(int)((m-off<CH)?(m-off):CH);
@@ -125,7 +124,7 @@ int main(int argc,char**argv){
     double mean=sum/done, sd=sqrt(sumsq/done-mean*mean);
     printf("BUCKETED-SIMD: %.2f s -> %.3f M games/s, %.1f M moves/s (%.2f rolls/game)\n",
            secs, done/secs/1e6, rolls/secs/1e6, (double)rolls/done);
-    printf("mean = %.5f  (optimal=%.5f, gap=%+.5f), games=%ld\n",
-           mean, V[idx(12,1,1,1)], mean-V[idx(12,1,1,1)], done);
+    printf("mean = %.5f  (sd %.4f, optimal=%.5f, gap=%+.5f), games=%ld\n",
+           mean, sd, V[idx(12,1,1,1)], mean-V[idx(12,1,1,1)], done);
     return 0;
 }
