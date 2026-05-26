@@ -1,6 +1,7 @@
 # Build all solvers/simulators for "bitches (a dice game)".
 #   make            # build everything
-#   make run        # quick smoke test of the headline numbers
+#   make run        # print the headline numbers
+#   make test       # assert the headline numbers (exits non-zero on regression)
 #   make clean
 
 CXX      ?= c++
@@ -33,6 +34,9 @@ competitive: competitive.cpp
 %: %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
+test: exact_dp thr_dp perfect maxperfect competitive opt_mc_mt
+	@sh test.sh
+
 run: exact_dp opt_mc_mt perfect maxperfect
 	@echo "== exact optimum ==";        ./exact_dp | head -1
 	@echo "== optimal MC (all cores) =="; ./opt_mc_mt 50000000 | grep -E 'mean|games/s'
@@ -43,4 +47,4 @@ clean:
 	rm -f $(BINS)
 	rm -rf *.dSYM
 
-.PHONY: all run clean
+.PHONY: all run test clean
