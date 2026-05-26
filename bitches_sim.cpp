@@ -79,12 +79,14 @@ static void init_thr() {
         double W[NUM_DICE + 1];
         W[1] = (s - 1) / 2.0;
         for (int m = 2; m <= NUM_DICE; ++m) {
-            double cont = W[m - 1], acc = 0;
+            double cont = W[m - 1];
+            double acc  = 0;
             for (int p = 0; p < s; ++p) acc += (p < cont ? p : cont);
             W[m] = acc / s;
         }
-        for (int D = 0; D <= NUM_DICE; ++D)
+        for (int D = 0; D <= NUM_DICE; ++D) {
             THR[s][D] = (D <= 1) ? s : (int)W[D - 1];  // floor(W); D==1 => always bank
+        }
     }
 }
 
@@ -93,7 +95,8 @@ struct Stats {
     int32_t  smin = INT32_MAX, smax = 0;
     uint64_t hist[128] = {};
     void merge(const Stats &o) {
-        sum += o.sum; sumsq += o.sumsq;
+        sum   += o.sum;
+        sumsq += o.sumsq;
         if (o.smin < smin) smin = o.smin;
         if (o.smax > smax) smax = o.smax;
         for (int i = 0; i < 128; ++i) hist[i] += o.hist[i];
@@ -114,8 +117,8 @@ static void run_range(uint64_t lo, uint64_t hi, uint64_t base_seed, Stats &st) {
         // --- init tile ---
         for (int i = 0; i < n; ++i) {
             uint64_t seed = base_seed ^ (done + (uint64_t)i + 0x9E3779B97F4A7C15ULL);
-            uint32_t s = (uint32_t)splitmix64(seed);
-            rng[i]   = s ? s : 0x1234567u;   // xorshift32 needs non-zero state
+            uint32_t rngState = (uint32_t)splitmix64(seed);
+            rng[i]   = rngState ? rngState : 0x1234567u;   // xorshift32 needs non-zero state
             score[i] = 0;
         }
         for (int d = 0; d < NUM_DICE; ++d)
@@ -147,20 +150,20 @@ static void run_range(uint64_t lo, uint64_t hi, uint64_t base_seed, Stats &st) {
             // the freed slot (scalar per-lane move; no-op when it was the last).
             const int last = count - 1;
             for (int i = 0; i < n; ++i) {
-                int32_t sz = dsz[argslot[i]][i];          // size of removed die
-                score[i]  += (minkey[i] + sz) >> 5;       // recover penalty from key
+                int32_t removedSize = dsz[argslot[i]][i];      // size of removed die
+                score[i]  += (minkey[i] + removedSize) >> 5;   // recover penalty from key
                 dsz[argslot[i]][i] = dsz[last][i];
             }
         }
 
         // --- reduce tile ---
         for (int i = 0; i < n; ++i) {
-            int32_t sc = score[i];
-            st.sum   += (uint64_t)sc;
-            st.sumsq += (uint64_t)sc * (uint64_t)sc;
-            if (sc < st.smin) st.smin = sc;
-            if (sc > st.smax) st.smax = sc;
-            if (sc < 128) ++st.hist[sc];
+            int32_t gameScore = score[i];
+            st.sum   += (uint64_t)gameScore;
+            st.sumsq += (uint64_t)gameScore * (uint64_t)gameScore;
+            if (gameScore < st.smin) st.smin = gameScore;
+            if (gameScore > st.smax) st.smax = gameScore;
+            if (gameScore < 128) ++st.hist[gameScore];
         }
     }
 }
@@ -184,9 +187,11 @@ static void run_range_threshold(uint64_t lo, uint64_t hi, uint64_t base_seed, St
 
         for (int i = 0; i < n; ++i) {
             uint64_t seed = base_seed ^ (done + (uint64_t)i + 0x9E3779B97F4A7C15ULL);
-            uint32_t s = (uint32_t)splitmix64(seed);
-            rng[i]   = s ? s : 0x1234567u;
-            score[i] = 0; alive[i] = FULL; cnt[i] = NUM_DICE;
+            uint32_t rngState = (uint32_t)splitmix64(seed);
+            rng[i]   = rngState ? rngState : 0x1234567u;
+            score[i] = 0;
+            alive[i] = FULL;
+            cnt[i]   = NUM_DICE;
         }
 
         // At most NUM_DICE rolls (>=1 banked each); finished games (alive==0)
@@ -195,9 +200,15 @@ static void run_range_threshold(uint64_t lo, uint64_t hi, uint64_t base_seed, St
             #pragma omp simd
             for (int i = 0; i < n; ++i) {
                 int c = cnt[i];
-                thr[6][i] = THR[6][c]; thr[8][i] = THR[8][c];
-                thr[10][i] = THR[10][c]; thr[12][i] = THR[12][c];
-                mindiff[i] = BIG; minpen[i] = 0; argmin[i] = 0; bankmask[i] = 0; banksum[i] = 0;
+                thr[6][i]  = THR[6][c];
+                thr[8][i]  = THR[8][c];
+                thr[10][i] = THR[10][c];
+                thr[12][i] = THR[12][c];
+                mindiff[i]  = BIG;
+                minpen[i]   = 0;
+                argmin[i]   = 0;
+                bankmask[i] = 0;
+                banksum[i]  = 0;
             }
 
             for (int d = 0; d < NUM_DICE; ++d) {
@@ -234,12 +245,12 @@ static void run_range_threshold(uint64_t lo, uint64_t hi, uint64_t base_seed, St
         }
 
         for (int i = 0; i < n; ++i) {
-            int32_t sc = score[i];
-            st.sum   += (uint64_t)sc;
-            st.sumsq += (uint64_t)sc * (uint64_t)sc;
-            if (sc < st.smin) st.smin = sc;
-            if (sc > st.smax) st.smax = sc;
-            if (sc < 128) ++st.hist[sc];
+            int32_t gameScore = score[i];
+            st.sum   += (uint64_t)gameScore;
+            st.sumsq += (uint64_t)gameScore * (uint64_t)gameScore;
+            if (gameScore < st.smin) st.smin = gameScore;
+            if (gameScore > st.smax) st.smax = gameScore;
+            if (gameScore < 128) ++st.hist[gameScore];
         }
     }
 }
@@ -270,7 +281,10 @@ int main(int argc, char **argv) {
     auto pctl = [&](double p) -> double {
         uint64_t target = (uint64_t)(p * (double)num_games);
         uint64_t cum = 0;
-        for (int s = 0; s < 128; ++s) { cum += g.hist[s]; if (cum >= target) return s; }
+        for (int s = 0; s < 128; ++s) {
+            cum += g.hist[s];
+            if (cum >= target) return s;
+        }
         return g.smax;
     };
 
@@ -287,7 +301,9 @@ int main(int argc, char **argv) {
     printf("\nscore distribution:\n");
     int lo = g.smin, hi = g.smax < 127 ? g.smax : 127;
     uint64_t peak = 1;
-    for (int s = lo; s <= hi; ++s) if (g.hist[s] > peak) peak = g.hist[s];
+    for (int s = lo; s <= hi; ++s) {
+        if (g.hist[s] > peak) peak = g.hist[s];
+    }
     for (int s = lo; s <= hi; ++s) {
         if (!g.hist[s]) continue;
         int bar = (int)(50.0 * g.hist[s] / peak);

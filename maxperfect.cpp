@@ -5,74 +5,133 @@
 // next roll, but more rolls to survive). If no die shows its max you are forced
 // to bank a non-max => run ends imperfect.
 //
-//   Pmax(S) = E_Z[ Z=empty ? 0 : max over nonempty B<=Z of Pmax(S - B) ]
+//   pPerfectMax(S) = E_Z[ Z=empty ? 0 : max over nonempty B<=Z of pPerfectMax(S - B) ]
 //
 // where Z = multiset of dice showing their max this roll (independent per die).
+//
+// A game state is the multiset of dice still in hand:
+//   d6                 : number of six-sided dice left, 0..12
+//   d8, d10, d12       : whether that single big die is still in hand, 0 or 1
+// That is 13 * 2 * 2 * 2 = 104 states.
+//
 // Build: c++ -O3 -mcpu=native -o maxperfect maxperfect.cpp
 
 #include <cstdio>
 #include <cmath>
 #include <random>
-#include <algorithm>
 
-static inline int idx(int a6,int a8,int a10,int a12){ return ((a6*2+a8)*2+a10)*2+a12; }
-static double Pm[104];
-static double C[13][13];
-static const double Q[4]={1.0/6,1.0/8,1.0/10,1.0/12}; // P(die shows its max)
+// Pack a state (d6 in 0..12; d8,d10,d12 in {0,1}) into a unique index 0..103.
+static inline int stateIndex(int d6, int d8, int d10, int d12){
+    return ((d6 * 2 + d8) * 2 + d10) * 2 + d12;
+}
 
-static inline double binom(int n,int k,double q){ return C[n][k]*pow(q,k)*pow(1-q,n-k); }
+static double pPerfectMax[104];      // pPerfectMax[state] = max achievable P(perfect)
+static double binomTable[13][13];    // binomTable[n][k]   = binomial coefficient C(n,k)
+static const double pShowMax[4] = {1.0/6, 1.0/8, 1.0/10, 1.0/12}; // P(die shows its max)
 
-int main(int argc,char**argv){
-    long N=(argc>1)?atol(argv[1]):50000000;
-    for(int n=0;n<13;++n){ C[n][0]=1; for(int k=1;k<=n;++k) C[n][k]=C[n-1][k-1]+C[n-1][k]; }
+static inline double binom(int n, int k, double q){
+    return binomTable[n][k] * pow(q, k) * pow(1 - q, n - k);
+}
 
-    Pm[idx(0,0,0,0)]=1.0;
-    bool alwaysBankAll=true;
-    for(int total=1; total<=15; ++total)
-     for(int a6=0;a6<=12;++a6)for(int a8=0;a8<=1;++a8)for(int a10=0;a10<=1;++a10)for(int a12=0;a12<=1;++a12){
-      if(a6+a8+a10+a12!=total) continue; double acc=0;
-      // sum over Z = (z6,z8,z10,z12) dice showing max
-      for(int z6=0;z6<=a6;++z6)for(int z8=0;z8<=a8;++z8)for(int z10=0;z10<=a10;++z10)for(int z12=0;z12<=a12;++z12){
-        if(z6+z8+z10+z12==0) continue;   // no max shown -> forced imperfect (0)
-        double pz=binom(a6,z6,Q[0])*binom(a8,z8,Q[1])*binom(a10,z10,Q[2])*binom(a12,z12,Q[3]);
-        // choose nonempty B<=Z maximizing Pm[S-B]
-        double bestc=-1; int bb6=0,bb8=0,bb10=0,bb12=0;
-        for(int b6=0;b6<=z6;++b6)for(int b8=0;b8<=z8;++b8)for(int b10=0;b10<=z10;++b10)for(int b12=0;b12<=z12;++b12){
-          if(b6+b8+b10+b12==0) continue;
-          double c=Pm[idx(a6-b6,a8-b8,a10-b10,a12-b12)];
-          if(c>bestc){ bestc=c; bb6=b6;bb8=b8;bb10=b10;bb12=b12; }
+int main(int argc, char** argv){
+    long N = (argc > 1) ? atol(argv[1]) : 50000000;
+    for(int n = 0; n < 13; ++n){
+        binomTable[n][0] = 1;
+        for(int k = 1; k <= n; ++k) binomTable[n][k] = binomTable[n-1][k-1] + binomTable[n-1][k];
+    }
+
+    pPerfectMax[stateIndex(0, 0, 0, 0)] = 1.0;
+    bool alwaysBankAll = true;
+    for(int totalDice = 1; totalDice <= 15; ++totalDice){
+      for(int d6 = 0; d6 <= 12; ++d6)
+      for(int d8 = 0; d8 <= 1; ++d8)
+      for(int d10 = 0; d10 <= 1; ++d10)
+      for(int d12 = 0; d12 <= 1; ++d12){
+        if(d6 + d8 + d10 + d12 != totalDice) continue;
+
+        double acc = 0;
+
+        // Sum over Z = (maxShown6, maxShown8, maxShown10, maxShown12) dice showing max.
+        for(int maxShown6 = 0; maxShown6 <= d6; ++maxShown6)
+        for(int maxShown8 = 0; maxShown8 <= d8; ++maxShown8)
+        for(int maxShown10 = 0; maxShown10 <= d10; ++maxShown10)
+        for(int maxShown12 = 0; maxShown12 <= d12; ++maxShown12){
+          if(maxShown6 + maxShown8 + maxShown10 + maxShown12 == 0)
+              continue;   // no max shown -> forced imperfect (0)
+
+          double pz = binom(d6, maxShown6, pShowMax[0]) * binom(d8, maxShown8, pShowMax[1])
+              * binom(d10, maxShown10, pShowMax[2]) * binom(d12, maxShown12, pShowMax[3]);
+
+          // Choose nonempty banked subset B <= Z maximizing pPerfectMax[S - B].
+          double bestChild = -1;
+          int bank6 = 0, bank8 = 0, bank10 = 0, bank12 = 0;
+          for(int b6 = 0; b6 <= maxShown6; ++b6)
+          for(int b8 = 0; b8 <= maxShown8; ++b8)
+          for(int b10 = 0; b10 <= maxShown10; ++b10)
+          for(int b12 = 0; b12 <= maxShown12; ++b12){
+            if(b6 + b8 + b10 + b12 == 0) continue;
+            double child = pPerfectMax[stateIndex(d6 - b6, d8 - b8, d10 - b10, d12 - b12)];
+            if(child > bestChild){
+                bestChild = child;
+                bank6 = b6;
+                bank8 = b8;
+                bank10 = b10;
+                bank12 = b12;
+            }
+          }
+          if(!(bank6 == maxShown6 && bank8 == maxShown8 && bank10 == maxShown10 && bank12 == maxShown12))
+              alwaysBankAll = false;   // kept a maxed die
+          acc += pz * bestChild;
         }
-        if(!(bb6==z6&&bb8==z8&&bb10==z10&&bb12==z12)) alwaysBankAll=false; // kept a maxed die
-        acc += pz*bestc;
+        pPerfectMax[stateIndex(d6, d8, d10, d12)] = acc;
       }
-      Pm[idx(a6,a8,a10,a12)]=acc;
-     }
+    }
 
-    double p=Pm[idx(12,1,1,1)];
+    double p = pPerfectMax[stateIndex(12, 1, 1, 1)];
     printf("MAX P(perfect) = %.6e  = 1 in %.0f  (%.4f%%)\n", p, 1.0/p, 100*p);
     printf("optimal max-perfect policy is 'bank EVERY max-faced die each roll': %s\n",
-           alwaysBankAll? "YES" : "NO (sometimes keep a max-faced die)");
+           alwaysBankAll ? "YES" : "NO (sometimes keep a max-faced die)");
     printf("(for reference, under expected-optimal play it was 1.613e-3 = 1 in 620)\n");
 
-    // MC of the ACTUAL optimal max-perfect policy (choose bank-subset via Pm)
-    std::mt19937_64 g(0xFEED);
-    long zeros=0;
-    for(long t=0;t<N;++t){
-        int a6=12,a8=1,a10=1,a12=1; bool perfect=true;
-        while(a6+a8+a10+a12>0){
-            int z6=0; for(int j=0;j<a6;++j) if(g()%6==5) z6++;
-            int z8 =a8 ?(g()%8==7):0, z10=a10?(g()%10==9):0, z12=a12?(g()%12==11):0;
-            if(z6+z8+z10+z12==0){ perfect=false; break; }
-            double bc=-1; int bb6=0,bb8=0,bb10=0,bb12=0;
-            for(int b6=0;b6<=z6;++b6)for(int b8=0;b8<=z8;++b8)for(int b10=0;b10<=z10;++b10)for(int b12=0;b12<=z12;++b12){
-              if(b6+b8+b10+b12==0) continue;
-              double c=Pm[idx(a6-b6,a8-b8,a10-b10,a12-b12)];
-              if(c>bc){bc=c;bb6=b6;bb8=b8;bb10=b10;bb12=b12;}
+    // MC of the ACTUAL optimal max-perfect policy (choose bank-subset via pPerfectMax).
+    std::mt19937_64 rng(0xFEED);
+    long zeros = 0;
+    for(long t = 0; t < N; ++t){
+        int d6 = 12, d8 = 1, d10 = 1, d12 = 1;
+        bool perfect = true;
+        while(d6 + d8 + d10 + d12 > 0){
+            int maxShown6 = 0;
+            for(int j = 0; j < d6; ++j) if(rng() % 6 == 5) maxShown6++;
+            int maxShown8  = d8  ? (rng() % 8  == 7)  : 0;
+            int maxShown10 = d10 ? (rng() % 10 == 9)  : 0;
+            int maxShown12 = d12 ? (rng() % 12 == 11) : 0;
+            if(maxShown6 + maxShown8 + maxShown10 + maxShown12 == 0){
+                perfect = false;
+                break;
             }
-            a6-=bb6;a8-=bb8;a10-=bb10;a12-=bb12;
+            double bestChild = -1;
+            int bank6 = 0, bank8 = 0, bank10 = 0, bank12 = 0;
+            for(int b6 = 0; b6 <= maxShown6; ++b6)
+            for(int b8 = 0; b8 <= maxShown8; ++b8)
+            for(int b10 = 0; b10 <= maxShown10; ++b10)
+            for(int b12 = 0; b12 <= maxShown12; ++b12){
+              if(b6 + b8 + b10 + b12 == 0) continue;
+              double child = pPerfectMax[stateIndex(d6 - b6, d8 - b8, d10 - b10, d12 - b12)];
+              if(child > bestChild){
+                  bestChild = child;
+                  bank6 = b6;
+                  bank8 = b8;
+                  bank10 = b10;
+                  bank12 = b12;
+              }
+            }
+            d6 -= bank6;
+            d8 -= bank8;
+            d10 -= bank10;
+            d12 -= bank12;
         }
         if(perfect) zeros++;
     }
-    printf("MC (optimal max-perfect policy) P(perfect) = %.6e  (%ld/%ld)\n",(double)zeros/N,zeros,N);
+    printf("MC (optimal max-perfect policy) P(perfect) = %.6e  (%ld/%ld)\n", (double)zeros/N, zeros, N);
     return 0;
 }

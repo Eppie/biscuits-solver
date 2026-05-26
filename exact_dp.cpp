@@ -1,102 +1,141 @@
 // bitches (a dice game) — EXACT optimal policy via dynamic programming.
 //
-// State = multiset of dice still in hand: (a6, a8, a10, a12) with a6 in [0,12],
-// a8/a10/a12 in {0,1}. 13*2*2*2 = 104 states. V(S) = optimal expected remaining
-// score (lower is better). V(0,0,0,0)=0.
+// A game state is the multiset of dice still in hand:
+//   d6                 : number of six-sided dice left, 0..12
+//   d8, d10, d12       : whether that single big die is still in hand, 0 or 1
+// That is 13 * 2 * 2 * 2 = 104 states. V(state) = optimal expected remaining
+// score (lower is better), with V(0,0,0,0) = 0.
 //
-//   V(S) = sum over all roll outcomes  prob(outcome) * min over kept-sets K ⊊ S
-//              [ (penalties of banked dice) + V(K) ]
+//   V(S) = sum over all roll outcomes  prob(outcome) * min over kept-sets K < S
+//              [ (penalties of the dice you bank) + V(K) ]
 //
-// Within one roll, for a fixed kept-COUNT per die type you keep the highest-
-// penalty dice (bank the good ones, reroll the bad ones), since V(K) depends
-// only on the composition of K, not which specific dice. So the per-roll
-// decision is a max over <=104 kept-compositions of  (kept top-penalty sum) -
-// V(K), and banked = (total penalty) - (kept top sum). We enumerate every d6
-// face-composition with its exact multinomial weight (no Monte Carlo), so V is
-// exact and the induced policy is provably optimal.
+// Within one roll, once you fix how MANY dice of each type to keep you keep the
+// highest-penalty ones (bank the good dice, reroll the bad), because V(K) depends
+// only on the composition of K, not which specific dice it contains. So the
+// per-roll decision is a maximisation over <= 104 kept-compositions of
+// (kept top-penalty sum) - V(K), and what you bank is (total penalty) minus that.
+// We enumerate every d6 face-composition with its exact multinomial weight (no
+// Monte Carlo), so V is exact and the induced policy is provably optimal.
 //
-// Build: c++ -O3 -march=native -o exact_dp exact_dp.cpp   (or -mcpu=native on ARM)
+// Build: c++ -O3 -mcpu=native -o exact_dp exact_dp.cpp   (or -march=native on x86)
 
 #include <cstdio>
-#include <vector>
-#include <algorithm>
 #include <cmath>
 #include <chrono>
 
-static inline int idx(int a6,int a8,int a10,int a12){ return ((a6*2+a8)*2+a10)*2+a12; }
+// Pack a state (d6 in 0..12; d8,d10,d12 in {0,1}) into a unique index 0..103.
+static inline int stateIndex(int d6, int d8, int d10, int d12){
+    return ((d6 * 2 + d8) * 2 + d10) * 2 + d12;
+}
 
-static double V[104];
-static double fact[13];
+static double V[104];           // V[state] = optimal expected remaining score
+static double factorial[13];    // factorial[n] = n!
+static double pow6[13];         // pow6[n] = 6^n
 
 int main(){
-    fact[0]=1; for(int i=1;i<13;++i) fact[i]=fact[i-1]*i;
-    double pw6[13]; for(int a=0;a<13;++a) pw6[a]=pow(6.0,a); // 6^a
+    factorial[0] = 1;
+    for(int i = 1; i < 13; ++i) factorial[i] = factorial[i-1] * i;
+    for(int n = 0; n < 13; ++n) pow6[n] = std::pow(6.0, n);
 
-    auto t0=std::chrono::steady_clock::now();
-    V[idx(0,0,0,0)]=0.0;
+    auto startTime = std::chrono::steady_clock::now();
 
-    // Process states in increasing total dice count (every kept-set K is smaller).
-    for(int total=1; total<=15; ++total){
-      for(int a6=0;a6<=12;++a6) for(int a8=0;a8<=1;++a8)
-      for(int a10=0;a10<=1;++a10) for(int a12=0;a12<=1;++a12){
-        if(a6+a8+a10+a12!=total) continue;
-        double Vacc=0.0;
+    V[stateIndex(0, 0, 0, 0)] = 0.0;    // empty hand: nothing left to score
 
-        // Enumerate d6 face-composition n1..n6 (counts of faces 1..6), sum=a6.
-        // penalty(face f) = 6-f, so face1->pen5 ... face6->pen0.
-        for(int n1=0;n1<=a6;++n1)
-        for(int n2=0;n2<=a6-n1;++n2)
-        for(int n3=0;n3<=a6-n1-n2;++n3)
-        for(int n4=0;n4<=a6-n1-n2-n3;++n4)
-        for(int n5=0;n5<=a6-n1-n2-n3-n4;++n5){
-            int n6=a6-n1-n2-n3-n4-n5;
-            double w6=(fact[a6]/(fact[n1]*fact[n2]*fact[n3]*fact[n4]*fact[n5]*fact[n6]))/pw6[a6];
+    // Solve states in order of increasing dice count, so that every smaller
+    // "kept" sub-state K has already been computed before we need it.
+    for(int totalDice = 1; totalDice <= 15; ++totalDice){
+      for(int d6 = 0; d6 <= 12; ++d6)
+      for(int d8 = 0; d8 <= 1; ++d8)
+      for(int d10 = 0; d10 <= 1; ++d10)
+      for(int d12 = 0; d12 <= 1; ++d12){
+        if(d6 + d8 + d10 + d12 != totalDice) continue;
 
-            // S6[k] = sum of the k highest d6 penalties (5's then 4's ...).
-            double S6[13]; S6[0]=0; int k=0;
-            int cntp[6]={n1,n2,n3,n4,n5,n6};     // counts of penalty 5,4,3,2,1,0
-            for(int pen=5,c=0;pen>=0;--pen,++c)
-                for(int j=0;j<cntp[c];++j){ S6[k+1]=S6[k]+pen; ++k; }
-            double totpen6=S6[a6];
+        double expectedScore = 0.0;
 
-            // Big dice (d8,d10,d12): enumerate present ones' penalties uniformly.
-            int p8lo=0,p8hi=a8?7:0;  double w8=a8?1.0/8:1.0;
-            int p10lo=0,p10hi=a10?9:0; double w10=a10?1.0/10:1.0;
-            int p12lo=0,p12hi=a12?11:0; double w12=a12?1.0/12:1.0;
+        // Enumerate how the d6 dice land, as counts of each face value 1..6
+        // (a multinomial composition summing to d6). The penalty of a d6 showing
+        // face f is 6 - f, so face 1 -> penalty 5, ..., face 6 -> penalty 0.
+        for(int face1 = 0; face1 <= d6; ++face1)
+        for(int face2 = 0; face2 <= d6 - face1; ++face2)
+        for(int face3 = 0; face3 <= d6 - face1 - face2; ++face3)
+        for(int face4 = 0; face4 <= d6 - face1 - face2 - face3; ++face4)
+        for(int face5 = 0; face5 <= d6 - face1 - face2 - face3 - face4; ++face5){
+            int face6 = d6 - face1 - face2 - face3 - face4 - face5;
 
-            for(int p8=p8lo;p8<=p8hi;++p8)
-            for(int p10=p10lo;p10<=p10hi;++p10)
-            for(int p12=p12lo;p12<=p12hi;++p12){
-                double S8[2]={0,(double)p8}, S10[2]={0,(double)p10}, S12[2]={0,(double)p12};
-                double totpen = totpen6 + (a8?p8:0) + (a10?p10:0) + (a12?p12:0);
+            // Probability of this exact face-count combination.
+            double prob6 = (factorial[d6] /
+                (factorial[face1] * factorial[face2] * factorial[face3] *
+                 factorial[face4] * factorial[face5] * factorial[face6]))
+                / pow6[d6];
 
-                // max over kept compositions K ⊊ S of (kept top sum) - V(K).
-                double best=-1e300;
-                for(int k6=0;k6<=a6;++k6)
-                for(int k8=0;k8<=a8;++k8)
-                for(int k10=0;k10<=a10;++k10)
-                for(int k12=0;k12<=a12;++k12){
-                    if(k6==a6&&k8==a8&&k10==a10&&k12==a12) continue; // must bank >=1
-                    double val=S6[k6]+S8[k8]+S10[k10]+S12[k12]-V[idx(k6,k8,k10,k12)];
-                    if(val>best) best=val;
+            // topPenSum6[k] = sum of the k largest d6 penalties this roll
+            // (penalty-5 dice first, then 4, ...). Keeping k of your d6 means
+            // keeping the k highest-penalty ones, so this is what you would bank.
+            double topPenSum6[13];
+            topPenSum6[0] = 0;
+            {
+                int faceCount[6] = {face1, face2, face3, face4, face5, face6};
+                int kept = 0;
+                for(int penalty = 5, f = 0; penalty >= 0; --penalty, ++f)
+                    for(int j = 0; j < faceCount[f]; ++j){
+                        topPenSum6[kept + 1] = topPenSum6[kept] + penalty;
+                        ++kept;
+                    }
+            }
+            double totalPen6 = topPenSum6[d6];
+
+            // Each big die present shows one penalty, uniformly distributed.
+            // Enumerate every possibility and weight by its probability.
+            double prob8  = d8  ? 1.0 / 8  : 1.0;
+            double prob10 = d10 ? 1.0 / 10 : 1.0;
+            double prob12 = d12 ? 1.0 / 12 : 1.0;
+
+            for(int pen8  = 0; pen8  <= (d8  ? 7  : 0); ++pen8)
+            for(int pen10 = 0; pen10 <= (d10 ? 9  : 0); ++pen10)
+            for(int pen12 = 0; pen12 <= (d12 ? 11 : 0); ++pen12){
+                // Penalty contributed by each big die if you keep it (index 1)
+                // versus reroll it (index 0).
+                double keep8Pen[2]  = {0, (double)pen8};
+                double keep10Pen[2] = {0, (double)pen10};
+                double keep12Pen[2] = {0, (double)pen12};
+
+                double totalPen = totalPen6
+                    + (d8 ? pen8 : 0) + (d10 ? pen10 : 0) + (d12 ? pen12 : 0);
+
+                // Pick the kept sub-hand K (a proper subset; you must bank >= 1)
+                // that maximises (penalties you bank) - V(K).
+                double bestKeepValue = -1e300;
+                for(int keep6  = 0; keep6  <= d6;  ++keep6)
+                for(int keep8  = 0; keep8  <= d8;  ++keep8)
+                for(int keep10 = 0; keep10 <= d10; ++keep10)
+                for(int keep12 = 0; keep12 <= d12; ++keep12){
+                    if(keep6 == d6 && keep8 == d8 && keep10 == d10 && keep12 == d12)
+                        continue;   // banking nothing is not allowed
+                    double value = topPenSum6[keep6] + keep8Pen[keep8]
+                        + keep10Pen[keep10] + keep12Pen[keep12]
+                        - V[stateIndex(keep6, keep8, keep10, keep12)];
+                    if(value > bestKeepValue) bestKeepValue = value;
                 }
-                double minbanked = totpen - best;
-                Vacc += w6*w8*w10*w12*minbanked;
+
+                double minBanked = totalPen - bestKeepValue;
+                expectedScore += prob6 * prob8 * prob10 * prob12 * minBanked;
             }
         }
-        V[idx(a6,a8,a10,a12)]=Vacc;
+        V[stateIndex(d6, d8, d10, d12)] = expectedScore;
       }
     }
 
-    auto t1=std::chrono::steady_clock::now();
-    double secs=std::chrono::duration<double>(t1-t0).count();
+    double seconds = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - startTime).count();
 
-    printf("EXACT optimal expected score V(12,1,1,1) = %.6f\n", V[idx(12,1,1,1)]);
-    printf("(compute time %.2f s)\n\n", secs);
+    printf("EXACT optimal expected score V(12,1,1,1) = %.6f\n", V[stateIndex(12, 1, 1, 1)]);
+    printf("(compute time %.2f s)\n\n", seconds);
 
-    printf("Optimal V for selected states (a6,a8,a10,a12):\n");
-    int show[][4]={{12,1,1,1},{12,0,0,0},{6,1,1,1},{6,0,0,0},{3,0,0,0},{1,0,0,0},
-                   {0,0,0,1},{0,0,1,0},{0,1,0,0},{1,1,1,1},{2,1,1,1}};
-    for(auto&s:show) printf("  V(%2d,%d,%d,%d) = %.4f\n",s[0],s[1],s[2],s[3],V[idx(s[0],s[1],s[2],s[3])]);
+    printf("Optimal V for selected states (d6,d8,d10,d12):\n");
+    int show[][4] = {{12,1,1,1},{12,0,0,0},{6,1,1,1},{6,0,0,0},{3,0,0,0},{1,0,0,0},
+                     {0,0,0,1},{0,0,1,0},{0,1,0,0},{1,1,1,1},{2,1,1,1}};
+    for(auto& s : show)
+        printf("  V(%2d,%d,%d,%d) = %.4f\n",
+               s[0], s[1], s[2], s[3], V[stateIndex(s[0], s[1], s[2], s[3])]);
     return 0;
 }
