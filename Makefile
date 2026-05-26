@@ -20,6 +20,9 @@ BINS := bitches_sim exact_dp thr_dp policy_extract sep_strict \
 
 all: $(BINS)
 
+# Most programs share the core DP/state code in bitches.h, so rebuild on header change.
+$(BINS): bitches.h
+
 # opt_mc_mt and competitive need pthreads
 opt_mc_mt: opt_mc_mt.cpp
 	$(CXX) $(CXXFLAGS) -pthread -o $@ $<

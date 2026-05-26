@@ -13,13 +13,9 @@
 #include <cstdio>
 #include <cmath>
 #include <chrono>
+#include "bitches.h"
 
-// Pack a state (d6 in 0..12; d8,d10,d12 in {0,1}) into a unique index 0..103.
-static inline int stateIndex(int d6, int d8, int d10, int d12){
-    return ((d6 * 2 + d8) * 2 + d10) * 2 + d12;
-}
-
-static double V[104];           // V[state] = expected remaining score under the threshold policy
+static double V[NUM_STATES];    // V[state] = expected remaining score under the threshold policy
 static double factorial[13];    // factorial[n] = n!
 static int THR[13][16];         // THR[size][dice left] = bank a die iff its penalty <= this
 

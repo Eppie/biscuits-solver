@@ -47,15 +47,12 @@
 #include <thread>
 #include <atomic>
 
-// Pack a state (d6 in 0..12; d8,d10,d12 in {0,1}) into a unique index 0..103.
-static inline int stateIndex(int d6, int d8, int d10, int d12){
-    return ((d6 * 2 + d8) * 2 + d10) * 2 + d12;
-}
+#include "bitches.h"
 
 static const int MAXS = 87;     // maximum possible final score
 static const int SZ   = 88;     // score-index size (0..87)
 
-static double V[104];           // V[state] = expected-optimal value function (mean remaining score)
+static double V[NUM_STATES];    // V[state] = expected-optimal value function (mean remaining score)
 static double factorial[13];    // factorial[n] = n!
 static double pow6[13];         // pow6[n] = 6^n
 static int    maxRemainOf[104]; // max remaining penalty reachable from a state
@@ -83,111 +80,6 @@ static void initTables(){
         int id = stateIndex(d6, d8, d10, d12);
         maxRemainOf[id]  = m;
         maxBankedOf[id]  = MAXS - m;
-    }
-}
-
-// ---- (shared) expand a roll into the sorted-prefix penalty sums for the d6 dice.
-// Given face counts faceCount[0..5] (penalty 5,4,3,2,1,0), topPenSum6[k] = sum of
-// the k highest d6 penalties (so keeping k of your d6 banks topPenSum6[k]).
-static inline void buildTopPenSums(const int faceCount[6], double topPenSum6[13]){
-    topPenSum6[0] = 0;
-    int kept = 0;
-    for(int penalty = 5, f = 0; penalty >= 0; --penalty, ++f){
-        for(int j = 0; j < faceCount[f]; ++j){
-            topPenSum6[kept + 1] = topPenSum6[kept] + penalty;
-            ++kept;
-        }
-    }
-}
-
-// =====================================================================
-// (A0) Expected-optimal value function V (same DP as exact_dp.cpp).
-// =====================================================================
-static void solveV(){
-    V[stateIndex(0, 0, 0, 0)] = 0;
-    for(int totalDice = 1; totalDice <= 15; ++totalDice)
-    for(int d6 = 0; d6 <= 12; ++d6)
-    for(int d8 = 0; d8 <= 1; ++d8)
-    for(int d10 = 0; d10 <= 1; ++d10)
-    for(int d12 = 0; d12 <= 1; ++d12){
-        if(d6 + d8 + d10 + d12 != totalDice){
-            continue;
-        }
-        double expectedScore = 0;
-        for(int face1 = 0; face1 <= d6; ++face1)
-        for(int face2 = 0; face2 <= d6 - face1; ++face2)
-        for(int face3 = 0; face3 <= d6 - face1 - face2; ++face3)
-        for(int face4 = 0; face4 <= d6 - face1 - face2 - face3; ++face4)
-        for(int face5 = 0; face5 <= d6 - face1 - face2 - face3 - face4; ++face5){
-            int face6 = d6 - face1 - face2 - face3 - face4 - face5;
-            double prob6 = (factorial[d6] /
-                (factorial[face1] * factorial[face2] * factorial[face3] *
-                 factorial[face4] * factorial[face5] * factorial[face6]))
-                / pow6[d6];
-            int faceCount[6] = {face1, face2, face3, face4, face5, face6};
-            double topPenSum6[13];
-            buildTopPenSums(faceCount, topPenSum6);
-            double totalPen6 = topPenSum6[d6];
-            double prob8  = d8  ? 1.0 / 8  : 1;
-            double prob10 = d10 ? 1.0 / 10 : 1;
-            double prob12 = d12 ? 1.0 / 12 : 1;
-            for(int pen8  = 0; pen8  <= (d8  ? 7  : 0); ++pen8)
-            for(int pen10 = 0; pen10 <= (d10 ? 9  : 0); ++pen10)
-            for(int pen12 = 0; pen12 <= (d12 ? 11 : 0); ++pen12){
-                double keep8Pen[2]  = {0, (double)pen8};
-                double keep10Pen[2] = {0, (double)pen10};
-                double keep12Pen[2] = {0, (double)pen12};
-                double totalPen = totalPen6
-                    + (d8 ? pen8 : 0) + (d10 ? pen10 : 0) + (d12 ? pen12 : 0);
-                double bestKeepValue = -1e300;
-                for(int try6  = 0; try6  <= d6;  ++try6)
-                for(int try8  = 0; try8  <= d8;  ++try8)
-                for(int try10 = 0; try10 <= d10; ++try10)
-                for(int try12 = 0; try12 <= d12; ++try12){
-                    if(try6 == d6 && try8 == d8 && try10 == d10 && try12 == d12){
-                        continue;
-                    }
-                    double value = topPenSum6[try6] + keep8Pen[try8]
-                        + keep10Pen[try10] + keep12Pen[try12]
-                        - V[stateIndex(try6, try8, try10, try12)];
-                    if(value > bestKeepValue){
-                        bestKeepValue = value;
-                    }
-                }
-                expectedScore += prob6 * prob8 * prob10 * prob12 * (totalPen - bestKeepValue);
-            }
-        }
-        V[stateIndex(d6, d8, d10, d12)] = expectedScore;
-    }
-}
-
-// expected-optimal kept composition for a roll (canonical tie-break: first found
-// = fewer kept = bank more, matching the MC simulators).
-static inline void optKV(int d6, int d8, int d10, int d12, const double* topPenSum6,
-                         int pen8, int pen10, int pen12,
-                         int& keep6, int& keep8, int& keep10, int& keep12){
-    double keep8Pen[2]  = {0, (double)pen8};
-    double keep10Pen[2] = {0, (double)pen10};
-    double keep12Pen[2] = {0, (double)pen12};
-    double bestKeepValue = -1e300;
-    keep6 = keep8 = keep10 = keep12 = 0;
-    for(int try6  = 0; try6  <= d6;  ++try6)
-    for(int try8  = 0; try8  <= d8;  ++try8)
-    for(int try10 = 0; try10 <= d10; ++try10)
-    for(int try12 = 0; try12 <= d12; ++try12){
-        if(try6 == d6 && try8 == d8 && try10 == d10 && try12 == d12){
-            continue;
-        }
-        double value = topPenSum6[try6] + keep8Pen[try8]
-            + keep10Pen[try10] + keep12Pen[try12]
-            - V[stateIndex(try6, try8, try10, try12)];
-        if(value > bestKeepValue){
-            bestKeepValue = value;
-            keep6  = try6;
-            keep8  = try8;
-            keep10 = try10;
-            keep12 = try12;
-        }
     }
 }
 
@@ -232,7 +124,7 @@ static void scoreDistOptimal(){
             for(int pen10 = 0; pen10 <= (d10 ? 9  : 0); ++pen10)
             for(int pen12 = 0; pen12 <= (d12 ? 11 : 0); ++pen12){
                 int keep6, keep8, keep10, keep12;
-                optKV(d6, d8, d10, d12, topPenSum6, pen8, pen10, pen12,
+                optimalKeep(V, d6, d8, d10, d12, topPenSum6, pen8, pen10, pen12,
                       keep6, keep8, keep10, keep12);
                 int totalPen = (int)topPenSum6[d6] + (d8 ? pen8 : 0) + (d10 ? pen10 : 0) + (d12 ? pen12 : 0);
                 int keptPen  = (int)topPenSum6[keep6] + (keep8 ? pen8 : 0) + (keep10 ? pen10 : 0) + (keep12 ? pen12 : 0);
@@ -597,7 +489,7 @@ static int playGame(uint64_t& rngState0, uint64_t& rngState1, bool comp){
             brAction(d6, d8, d10, d12, topPenSum6, pen8, pen10, pen12, score,
                      keep6, keep8, keep10, keep12, b);
         }else{
-            optKV(d6, d8, d10, d12, topPenSum6, pen8, pen10, pen12,
+            optimalKeep(V, d6, d8, d10, d12, topPenSum6, pen8, pen10, pen12,
                   keep6, keep8, keep10, keep12);
         }
         int totalPen = (int)topPenSum6[d6] + (d8 ? pen8 : 0) + (d10 ? pen10 : 0) + (d12 ? pen12 : 0);
@@ -657,7 +549,7 @@ int main(int argc, char** argv){
     printf("(threads: %d ; equilibrium up to N=%d)\n", numThreads, eqMaxN);
     auto t0 = std::chrono::steady_clock::now();
     initTables();
-    solveV();
+    solveV(V);
     scoreDistOptimal();
 
     const double* Dfull = Dopt[stateIndex(12, 1, 1, 1)].data();   // expected-optimal score distribution

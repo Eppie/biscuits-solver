@@ -87,6 +87,11 @@ each round").
 
 ## Files
 
+- `bitches.h` — **shared core** included by most programs: the state encoding
+  (`stateIndex`), the exact value DP (`solveV`), the optimal per-roll action it
+  induces (`optimalKeep`), and the d6 top-penalty prefix sums (`buildTopPenSums`).
+  Single source of truth for the value function so it isn't re-implemented per file.
+
 ### Exact solvers (dynamic programming over the 104 hand-states)
 - `exact_dp.cpp` — optimal value function `V`; prints optimal expected score (8.0879).
 - `thr_dp.cpp` — exact expected value of the threshold (Blackjack-table) policy (8.530).

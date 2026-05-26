@@ -20,10 +20,7 @@
 #include <cmath>
 #include <random>
 
-// Pack a state (d6 in 0..12; d8,d10,d12 in {0,1}) into a unique index 0..103.
-static inline int stateIndex(int d6, int d8, int d10, int d12){
-    return ((d6 * 2 + d8) * 2 + d10) * 2 + d12;
-}
+#include "bitches.h"
 
 static double pPerfectMax[104];      // pPerfectMax[state] = max achievable P(perfect)
 static double binomTable[13][13];    // binomTable[n][k]   = binomial coefficient C(n,k)
