@@ -1,0 +1,20 @@
+# compiled binaries (rebuild with `make`)
+bitches_sim
+exact_dp
+thr_dp
+policy_extract
+sep_strict
+opt_mc
+opt_mc_fast
+opt_mc_mt
+opt_card
+opt_simd8
+opt_bucket
+perfect
+maxperfect
+
+# build artifacts
+*.o
+*.out
+*.dSYM/
+bin/
