@@ -16,12 +16,15 @@ LDFLAGS  ?=
 
 BINS := bitches_sim exact_dp thr_dp policy_extract sep_strict \
         opt_mc opt_mc_fast opt_mc_mt opt_card opt_simd8 opt_bucket \
-        perfect maxperfect
+        perfect maxperfect competitive
 
 all: $(BINS)
 
-# opt_mc_mt needs pthreads
+# opt_mc_mt and competitive need pthreads
 opt_mc_mt: opt_mc_mt.cpp
+	$(CXX) $(CXXFLAGS) -pthread -o $@ $<
+
+competitive: competitive.cpp
 	$(CXX) $(CXXFLAGS) -pthread -o $@ $<
 
 %: %.cpp

@@ -12,6 +12,7 @@ opt_simd8
 opt_bucket
 perfect
 maxperfect
+competitive
 
 # build artifacts
 *.o

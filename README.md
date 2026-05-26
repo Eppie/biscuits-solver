@@ -35,6 +35,47 @@ simulators.
   (≈ "bank every max-faced die," occasionally keeping one). Note: contrary to a
   remark in Fetterman's paper, this probability is strategy-*dependent*.
 
+## Competitive play (lowest score wins, N players)
+
+Everything above minimizes the **expected** score (single agent). The game is
+actually won by the **lowest score at the table** — a different objective that
+rewards *variance management* (gamble when behind, play safe when ahead) and, for
+symmetric players, defines a **game-theoretic equilibrium**. `competitive.cpp`
+solves all of this exactly (DP, not simulation) and Monte-Carlo-validates it.
+
+- **Full score distribution** of the expected-optimal policy (not just the mean):
+  mean **8.088** (= V, as it must), **sd 3.57**, median 8, p95 = 15, P(0) = 0.161%.
+- **Win-value DP** `U(S,g)`: state = (hand-state, points banked so far `g`); payoff
+  is the expected win-*share* against a field with a known score distribution. The
+  optimal action now **depends on `g`** — exactly the variance management the
+  mean-optimal policy lacks. `U(full,0)` is the player's win probability.
+- **Best response to a table of expected-optimal players beats the 1/N baseline,
+  and the edge grows with table size:**
+
+  | players N | 1/N | best-response win-share | relative edge |
+  |---:|---:|---:|---:|
+  | 2 | 0.5000 | 0.5019 | +0.4% |
+  | 4 | 0.2500 | 0.2595 | +3.8% |
+  | 6 | 0.1667 | 0.1799 | +7.9% |
+  | 8 | 0.1250 | 0.1397 | +11.8% |
+
+- **Symmetric Nash equilibrium** (via fictitious play): the equilibrium policy
+  **deliberately accepts more variance and a slightly worse expected score** to win
+  more often. Equilibrium score sd rises 3.57 → 4.19 and mean drifts 8.09 → 8.49 as
+  N goes 2 → 8. At equilibrium each player's share is exactly 1/N (a fixed-point
+  check the solver confirms to 5 digits); a naive expected-optimal player dropped
+  into an equilibrium field loses up to **~11% below its fair 1/N share** (N = 8).
+- **Validation:** a multi-player Monte-Carlo tournament reproduces the DP win-shares
+  (e.g. N = 4 best-response: DP 0.2595 vs MC 0.2615; all-optimal seats → 1/N).
+
+**Recorded strategy tables (CSV).** Each run writes the full policies to disk:
+`optimal_policy.csv` (the single-agent value table `V`), and, for each player count
+N = 2,3,4, `competitive_equilibrium_N{N}.csv` (symmetric-equilibrium policy) and
+`competitive_bestresponse_N{N}.csv` (best response to a naive field). A competitive
+file lists `U(state,g)` for every reachable `(hand-state, points-banked-so-far g)`;
+the move is `keep the subset K maximizing U[K][g+banked]` (just as `V` drives the
+mean-optimal move). Bump the `maxN` arg to also emit N = 6/8 tables (long run).
+
 ## Relation to prior work
 The only prior analysis is Dave Fetterman's note *"Strategy for bitches (a dice
 game)"* (2022). We reproduced his per-die thresholds (Fig. 7) exactly, confirmed his
@@ -53,6 +94,11 @@ each round").
 - `sep_strict.cpp` — strict (tie-immune) separability test → 99/104 non-separable.
 - `perfect.cpp` — exact P(perfect) under optimal play + MC validation.
 - `maxperfect.cpp` — policy maximizing P(perfect) and its probability.
+- `competitive.cpp` — **N-player "lowest score wins"**: score-distribution DP,
+  win-probability DP `U(S,g)`, best response to expected-optimal field, symmetric
+  Nash equilibrium (fictitious play), and MC tournament validation. Multithreaded.
+  `./competitive [games] [threads] [maxN_equilibrium]` (default `4000000 <cores> 4`;
+  pass a larger `maxN` for the full N=6/8 equilibrium — minutes per N).
 
 ### Monte-Carlo simulators
 - `bitches_sim.cpp` — **vectorized** (NEON/AVX) sim of the *take-1* and *threshold*

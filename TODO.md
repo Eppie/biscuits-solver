@@ -1,49 +1,38 @@
 # TODO / open frontiers
 
-## 1. Competitive N-player strategy ("lowest score wins")  — OPEN
+## 1. Competitive N-player strategy ("lowest score wins")  — DONE
 
-Everything solved so far minimizes the **expected score** (single-agent). But the
-actual game is won by having the **lowest score at the table**. That's a different
-objective, and it's the main thing Fetterman (2022, §5.1) flagged and set aside.
+Solved in `competitive.cpp` (exact DP, Monte-Carlo-validated). All four steps of
+the original plan are implemented:
 
-### Why it's a different problem
-- The payoff is `P(your score < every opponent's score)`, not `E[score]`. You don't
-  care how low you go, only about beating the field.
-- This rewards **variance management**: when you're likely behind, you should gamble
-  (accept higher variance — e.g. hold dice longer chasing a great finish); when ahead,
-  play safe. The expected-score-optimal policy ignores this entirely.
-- For symmetric players all reasoning this way, it becomes a **game-theoretic
-  equilibrium** (each player's best response depends on the others' policies), not a
-  single-agent optimization.
+1. **Score-distribution DP.** The value DP is extended to carry the full
+   distribution of final scores per state. For the expected-optimal policy: mean
+   8.088 (= V), sd 3.57, median 8, p95 = 15, P(0) = 0.161%.
+2. **Win-value `W(s)` + win-probability DP `U(S,g)`.** State adds "points banked so
+   far" `g`; terminal payoff is the expected win-*share* against a field with a
+   known score distribution,
+   `W(s) = (P(opp>=s)^N - P(opp>s)^N) / (N·P(opp=s))` (fair tie-splitting).
+   The maximizing action depends on `g` — the variance management the mean-optimal
+   policy lacks. `U(full,0)` = win probability.
+3. **Best response to expected-optimal field** beats the 1/N baseline, edge growing
+   with table size: +0.4% (N=2), +3.8% (N=4), +7.9% (N=6), +11.8% (N=8) relative.
+4. **Symmetric Nash equilibrium** via fictitious play (damped, converges to L1<1e-7
+   for N<=6; N=8 converges slowly). Equilibrium players accept more variance
+   (sd 3.57→4.19) and a slightly worse expected score (8.09→8.49) to win more often;
+   each player's share is exactly 1/N at the fixed point (5-digit check). A naive
+   expected-optimal player in an equilibrium field loses up to ~11% below 1/N (N=8).
+5. **Validation** via multi-player Monte-Carlo tournament reproduces the DP
+   win-shares (e.g. N=4 best-response DP 0.2595 vs MC 0.2615).
 
-### Concrete plan
-1. **Heads-up vs a fixed opponent (easiest first step).** We already have the full
-   score *distribution* of any policy from the DP machinery (extend the value DP to
-   carry the distribution of final scores per state, not just the mean). Given an
-   opponent's score distribution, compute the policy that maximizes `P(win)` /
-   minimizes `P(loss)` by a DP whose state adds "points banked so far" (or "deficit
-   to the target you must beat"). State space grows (hand-state × score-so-far) but
-   scores are small integers, so it stays tractable.
-2. **Best response to "everyone plays the expected-optimal policy."** Use that policy's
-   score distribution as the field; solve the win-maximizing best response. Measure how
-   much it beats naive expected-optimal play head-to-head and N-handed.
-3. **Symmetric equilibrium.** Iterate best-response (fictitious play) until the policy is
-   a fixed point — the true competitive strategy for N symmetric players.
-4. **Validate** with a multi-player Monte-Carlo tournament (reuse `opt_mc*` harness;
-   each seat plays its policy, count wins). Confirm the DP win-probabilities.
-
-### Useful starting points already in the repo
-- `exact_dp.cpp` — the 104-state value DP to extend into a **score-distribution DP**.
-- `perfect.cpp` / `maxperfect.cpp` — examples of DPs over the same states optimizing a
-  *probability* (P(score=0)) rather than a mean; the win-probability DP is the same
-  shape with a richer terminal payoff.
-- Fetterman §5.1 Fig. 13 — his simulated "average minimum winning score" for 2–8
-  players (all using his heuristic) — a sanity baseline to compare against.
-
-### Related literature
-- arXiv:0912.5518 — *Optimal minimax strategy in a dice game* (competitive framing).
-- arXiv:1405.7488 — *A finite exact algorithm to solve a dice game*.
-- Neller & Presser — *Optimal play of the dice game Pig* (win-probability DP template).
+Notes / possible refinements (low priority):
+- The two `(S,g)` DP passes are multithreaded but still ~10 s/iter on 16 cores;
+  the full N=2..8 equilibrium sweep is ~25 min. Default run goes to N=4 (~10 min);
+  pass a larger `maxN` arg for N=6/8. A faster equilibrium (better damping /
+  Anderson acceleration, or pruning dominated kept-sets in the inner argmax) would
+  help, and would let N=8 converge tightly.
+- Fetterman §5.1 Fig. 13 baseline ("average minimum winning score", all-heuristic)
+  is reproduced as `E[min score]` for N=2..8 (6.10 down to 3.60 under expected-
+  optimal play) for comparison.
 
 ---
 
@@ -52,6 +41,12 @@ objective, and it's the main thing Fetterman (2022, §5.1) flagged and set aside
   data-movement; a counting-sort / index-based variant or a hybrid that keeps games
   in registers while batching only the argmax might still recover some. Low priority —
   multithreading already gives ~19M games/s.
-- **Variance / full distribution reporting** for the expected-optimal policy (the
-  score-distribution DP from item 1 gives this for free).
-- **Publish the optimal value table** `V` as a clean `optimal_policy.csv` artifact.
+- ~~**Publish the optimal value table** `V` as a clean `optimal_policy.csv` artifact.~~
+  DONE — `competitive` writes `optimal_policy.csv` (the `V` table) plus, per player
+  count N=2,3,4, `competitive_equilibrium_N{N}.csv` and
+  `competitive_bestresponse_N{N}.csv` (the `U(S,g)` win-probability tables).
+
+### Related literature
+- arXiv:0912.5518 — *Optimal minimax strategy in a dice game* (competitive framing).
+- arXiv:1405.7488 — *A finite exact algorithm to solve a dice game*.
+- Neller & Presser — *Optimal play of the dice game Pig* (win-probability DP template).
