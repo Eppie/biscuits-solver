@@ -1,6 +1,6 @@
-# bitches (a dice game) — solver & analysis
+# biscuits (a dice game) — solver & analysis
 
-A complete analysis of the dice game **"bitches"** (Glue Bunny Games): exact optimal
+A complete analysis of the dice game **"biscuits"** (Glue Bunny Games): exact optimal
 strategy, expected scores, perfect-game odds, and high-performance Monte-Carlo
 simulators.
 
@@ -77,7 +77,7 @@ the move is `keep the subset K maximizing U[K][g+banked]` (just as `V` drives th
 mean-optimal move). Bump the `maxN` arg to also emit N = 6/8 tables (long run).
 
 ## Relation to prior work
-The only prior analysis is Dave Fetterman's note *"Strategy for bitches (a dice
+The only prior analysis is Dave Fetterman's note *"Strategy for biscuits (a dice
 game)"* (2022). We reproduced his per-die thresholds (Fig. 7) exactly, confirmed his
 simulated 8.53 via exact DP, **solved the true optimum he left open** (he sketched
 the 104-state DP but didn't run it), and **corrected** his perfect-game claim. The
@@ -87,7 +87,7 @@ each round").
 
 ## Files
 
-- `bitches.h` — **shared core** included by most programs: the state encoding
+- `biscuits.h` — **shared core** included by most programs: the state encoding
   (`stateIndex`), the exact value DP (`solveV`), the optimal per-roll action it
   induces (`optimalKeep`), and the d6 top-penalty prefix sums (`buildTopPenSums`).
   Single source of truth for the value function so it isn't re-implemented per file.
@@ -106,8 +106,8 @@ each round").
   pass a larger `maxN` for the full N=6/8 equilibrium — minutes per N).
 
 ### Monte-Carlo simulators
-- `bitches_sim.cpp` — **vectorized** (NEON/AVX) sim of the *take-1* and *threshold*
-  strategies. ~24–26M games/s single-thread. `./bitches_sim [games] [seed] [take1|threshold]`.
+- `biscuits_sim.cpp` — **vectorized** (NEON/AVX) sim of the *take-1* and *threshold*
+  strategies. ~24–26M games/s single-thread. `./biscuits_sim [games] [seed] [take1|threshold]`.
 - `opt_mc.cpp` — optimal-policy MC, reference (mt19937 + sort). ~0.75M games/s.
 - `opt_mc_fast.cpp` — optimal-policy MC, **branchless argmax + fast RNG**. ~1.7M games/s.
 - `opt_mc_mt.cpp` — multithreaded optimal-policy MC. **~19M games/s / 216M moves/s** on 16 cores.
@@ -125,7 +125,7 @@ each round").
 make            # builds everything (auto-detects ARM -mcpu / x86 -march)
 make run        # smoke test of the headline numbers
 ./opt_mc_mt 100000000        # optimal-policy MC, all cores
-./bitches_sim 50000000 1 threshold
+./biscuits_sim 50000000 1 threshold
 ```
 
 ## Performance notes (optimal-policy MC)

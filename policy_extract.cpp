@@ -1,4 +1,4 @@
-// Extract the PROVABLY OPTIMAL policy for bitches and test separability.
+// Extract the PROVABLY OPTIMAL policy for biscuits and test separability.
 //
 // 1. DP over 104 states -> optimal value V[S] (lower = better).
 // 2. For each state S, enumerate every roll exactly. For each roll the optimal
@@ -17,7 +17,7 @@
 
 #include <cstdio>
 #include <cmath>
-#include "bitches.h"
+#include "biscuits.h"
 
 static double V[NUM_STATES];    // V[state] = optimal expected remaining score
 static double factorial[13];    // factorial[n] = n!

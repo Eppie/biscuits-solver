@@ -1,7 +1,7 @@
-// bitches (a dice game) — EXACT optimal policy via dynamic programming.
+// biscuits (a dice game) — EXACT optimal policy via dynamic programming.
 //
 // This is the stand-alone driver for the value DP. The DP itself (solveV) and the
-// state encoding live in bitches.h, since most programs in this repo need them; see
+// state encoding live in biscuits.h, since most programs in this repo need them; see
 // that header for the fully annotated algorithm. Here we just solve V and print it.
 //
 //   V(S) = sum over all roll outcomes  prob(outcome) * min over kept-sets K < S
@@ -15,7 +15,7 @@
 
 #include <cstdio>
 #include <chrono>
-#include "bitches.h"
+#include "biscuits.h"
 
 static double V[NUM_STATES];        // V[state] = optimal expected remaining score
 

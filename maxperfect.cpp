@@ -20,7 +20,7 @@
 #include <cmath>
 #include <random>
 
-#include "bitches.h"
+#include "biscuits.h"
 
 static double pPerfectMax[104];      // pPerfectMax[state] = max achievable P(perfect)
 static double binomTable[13][13];    // binomTable[n][k]   = binomial coefficient C(n,k)

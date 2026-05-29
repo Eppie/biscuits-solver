@@ -1,4 +1,4 @@
-# bitches competitive policy: best response vs 1 expected-optimal opponents
+# biscuits competitive policy: best response vs 1 expected-optimal opponents
 # state = (a6,a8,a10,a12) dice in hand; g = penalty points already banked this game.
 # U = expected win-share (probability of having the lowest score) from (state,g) under this policy.
 # OPTIMAL MOVE at (state,g) for a roll: keep the subset K maximizing U[K][g + banked_penalty(K)].

@@ -1,5 +1,5 @@
 # compiled binaries (rebuild with `make`)
-bitches_sim
+biscuits_sim
 exact_dp
 thr_dp
 policy_extract

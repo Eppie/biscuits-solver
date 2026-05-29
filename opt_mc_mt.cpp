@@ -16,7 +16,7 @@
 #include <thread>
 #include <vector>
 
-#include "bitches.h"
+#include "biscuits.h"
 
 static double V[NUM_STATES];    // V[state] = optimal expected remaining score
 

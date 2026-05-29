@@ -16,7 +16,7 @@
 #include <cstdint>
 #include <chrono>
 
-#include "bitches.h"
+#include "biscuits.h"
 
 static double V[NUM_STATES];    // V[state] = optimal expected remaining score
 // keepThreshold[b][j] = marginal value of keeping the j-th d6 given big-config b.

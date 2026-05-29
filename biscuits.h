@@ -1,4 +1,4 @@
-// bitches (a dice game) — shared core used by every solver/simulator in this repo.
+// biscuits (a dice game) — shared core used by every solver/simulator in this repo.
 //
 // The game uses 15 dice: 12 d6, one d8, one d10, one d12. Each roll you reroll the
 // dice in hand and must bank at least one; a banked die scores penalty = max_face -
@@ -15,8 +15,8 @@
 // Everything here is `static inline` so each single-file program can include it
 // without link issues (each .cpp builds into its own binary).
 
-#ifndef BITCHES_H
-#define BITCHES_H
+#ifndef BISCUITS_H
+#define BISCUITS_H
 
 #include <cmath>
 
@@ -148,4 +148,4 @@ static inline void optimalKeep(const double* V, int d6, int d8, int d10, int d12
     }
 }
 
-#endif // BITCHES_H
+#endif // BISCUITS_H

@@ -1,4 +1,4 @@
-# Build all solvers/simulators for "bitches (a dice game)".
+# Build all solvers/simulators for "biscuits (a dice game)".
 #   make            # build everything
 #   make run        # print the headline numbers
 #   make test       # assert the headline numbers (exits non-zero on regression)
@@ -15,14 +15,14 @@ endif
 CXXFLAGS ?= -O3 $(ARCHFLAGS) -funroll-loops -fopenmp-simd -std=c++17
 LDFLAGS  ?=
 
-BINS := bitches_sim exact_dp thr_dp policy_extract sep_strict \
+BINS := biscuits_sim exact_dp thr_dp policy_extract sep_strict \
         opt_mc opt_mc_fast opt_mc_mt opt_card opt_simd8 opt_bucket \
         perfect maxperfect competitive
 
 all: $(BINS)
 
-# Most programs share the core DP/state code in bitches.h, so rebuild on header change.
-$(BINS): bitches.h
+# Most programs share the core DP/state code in biscuits.h, so rebuild on header change.
+$(BINS): biscuits.h
 
 # opt_mc_mt and competitive need pthreads
 opt_mc_mt: opt_mc_mt.cpp

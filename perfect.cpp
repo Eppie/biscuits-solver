@@ -17,7 +17,7 @@
 #include <random>
 #include <algorithm>
 
-#include "bitches.h"
+#include "biscuits.h"
 
 static double V[NUM_STATES];    // V[state]        = optimal expected remaining score
 static double pPerfect[104];    // pPerfect[state] = P(finish at 0) under optimal play

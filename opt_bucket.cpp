@@ -12,7 +12,7 @@
 #include <vector>
 #include <chrono>
 
-#include "bitches.h"
+#include "biscuits.h"
 
 static double V[NUM_STATES];    // V[state] = optimal expected remaining score
 static float  Vf[NUM_STATES];   // float copy of V for the hot inner loop

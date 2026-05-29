@@ -1,4 +1,4 @@
-// bitches (a dice game) — Monte Carlo simulator
+// biscuits (a dice game) — Monte Carlo simulator
 // Glue Bunny Games. Rules (verbatim, via Larry Waldman / Dave Fetterman's paper):
 //
 //   "12 regular dice + 1 8 sided die, 1 10 sided die, 1 12 sided die. Roll all
@@ -30,9 +30,9 @@
 //    directly: pen = (rand32 * size) >> 32.
 //  - Cache-resident tiling. Single-threaded (parallelism intentionally left off).
 //
-// Build (x86):  c++ -O3 -march=native -funroll-loops -fopenmp-simd -o bitches_sim bitches_sim.cpp
-// Build (ARM):  c++ -O3 -mcpu=native  -funroll-loops -fopenmp-simd -o bitches_sim bitches_sim.cpp
-// Run:          ./bitches_sim [num_games] [seed]
+// Build (x86):  c++ -O3 -march=native -funroll-loops -fopenmp-simd -o biscuits_sim biscuits_sim.cpp
+// Build (ARM):  c++ -O3 -mcpu=native  -funroll-loops -fopenmp-simd -o biscuits_sim biscuits_sim.cpp
+// Run:          ./biscuits_sim [num_games] [seed]
 
 #include <cstdint>
 #include <cstdio>
@@ -288,7 +288,7 @@ int main(int argc, char **argv) {
         return g.smax;
     };
 
-    printf("bitches (a dice game) — strategy: %s\n", label);
+    printf("biscuits (a dice game) — strategy: %s\n", label);
     printf("games      : %llu\n", (unsigned long long)num_games);
     printf("mean score : %.4f\n", mean);
     printf("median     : %.0f\n", pctl(0.5));

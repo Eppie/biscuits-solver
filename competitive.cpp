@@ -1,4 +1,4 @@
-// bitches (a dice game) — COMPETITIVE N-player strategy ("lowest score wins").
+// biscuits (a dice game) — COMPETITIVE N-player strategy ("lowest score wins").
 //
 // Everything in exact_dp.cpp minimizes the EXPECTED score (single agent). The
 // actual game is won by having the LOWEST score at the table, which is a
@@ -47,7 +47,7 @@
 #include <thread>
 #include <atomic>
 
-#include "bitches.h"
+#include "biscuits.h"
 
 static const int MAXS = 87;     // maximum possible final score
 static const int SZ   = 88;     // score-index size (0..87)
@@ -410,7 +410,7 @@ static void dumpV(const char* path){
         perror(path);
         return;
     }
-    fprintf(f, "# bitches: expected-optimal (mean-minimizing) value function V.\n");
+    fprintf(f, "# biscuits: expected-optimal (mean-minimizing) value function V.\n");
     fprintf(f, "# state = dice still in hand (a6 d6 in 0..12; a8/a10/a12 each 0/1). V = optimal expected remaining score.\n");
     fprintf(f, "# OPTIMAL MOVE for a roll: keep the subset K of your dice maximizing (sum of kept penalties) - V[K].\n");
     fprintf(f, "a6,a8,a10,a12,V\n");
@@ -431,7 +431,7 @@ static void dumpUgrid(const char* path, const char* desc){
         perror(path);
         return;
     }
-    fprintf(f, "# bitches competitive policy: %s\n", desc);
+    fprintf(f, "# biscuits competitive policy: %s\n", desc);
     fprintf(f, "# state = (a6,a8,a10,a12) dice in hand; g = penalty points already banked this game.\n");
     fprintf(f, "# U = expected win-share (probability of having the lowest score) from (state,g) under this policy.\n");
     fprintf(f, "# OPTIMAL MOVE at (state,g) for a roll: keep the subset K maximizing U[K][g + banked_penalty(K)].\n");

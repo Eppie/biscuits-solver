@@ -1,4 +1,4 @@
-# bitches: expected-optimal (mean-minimizing) value function V.
+# biscuits: expected-optimal (mean-minimizing) value function V.
 # state = dice still in hand (a6 d6 in 0..12; a8/a10/a12 each 0/1). V = optimal expected remaining score.
 # OPTIMAL MOVE for a roll: keep the subset K of your dice maximizing (sum of kept penalties) - V[K].
 a6,a8,a10,a12,V

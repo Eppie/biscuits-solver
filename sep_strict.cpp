@@ -10,7 +10,7 @@
 // Build: c++ -O3 -mcpu=native -o sep_strict sep_strict.cpp
 
 #include <cstdio>
-#include "bitches.h"
+#include "biscuits.h"
 
 static double V[NUM_STATES];    // V[state] = optimal expected remaining score
 static const int SZ[4] = {6, 8, 10, 12};   // die sizes by type index

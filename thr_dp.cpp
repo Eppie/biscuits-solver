@@ -13,7 +13,7 @@
 #include <cstdio>
 #include <cmath>
 #include <chrono>
-#include "bitches.h"
+#include "biscuits.h"
 
 static double V[NUM_STATES];    // V[state] = expected remaining score under the threshold policy
 static double factorial[13];    // factorial[n] = n!

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Small smoke test for the "bitches" solvers: assert the headline numbers so a
+# Small smoke test for the "biscuits" solvers: assert the headline numbers so a
 # refactor that silently breaks the math gets caught. Run `make test` (builds
 # first) or `sh test.sh`. Exits non-zero if any check fails.
 #
