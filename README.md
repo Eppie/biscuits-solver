@@ -4,6 +4,11 @@ A complete analysis of the dice game **"biscuits"** (Glue Bunny Games): exact op
 strategy, expected scores, perfect-game odds, and high-performance Monte-Carlo
 simulators.
 
+> **Note:** *biscuits* is Glue Bunny Games' family-friendly edition of their original
+> game *bitches*; the two are mechanically identical, so this analysis applies to both.
+> The retail *biscuits* set ships **11× d6 plus one custom six-sided "biscuits" die**,
+> i.e. 12 six-sided dice in total — so the 12× d6 model below applies to both editions.
+
 ## The game
 - **15 dice:** 12× d6, 1× d8, 1× d10, 1× d12.
 - Each roll, reroll all dice in hand and **remove at least one** (up to all).
@@ -17,7 +22,7 @@ simulators.
 |---|---:|---|
 | Idealized floor (unreachable) | 3.31 | parallel single-die optimal stopping |
 | **Provably optimal** | **8.088** | exact 104-state DP, MC-validated |
-| Best per-die-cutoff approximation | 8.21 | extracted from optimal |
+| Best "decision-card" cutoff approximation | 8.116 | rank cutoffs extracted from optimal (`opt_card`) |
 | Threshold heuristic (our forced rule) | 8.486 | exact DP = MC |
 | Fetterman's published heuristic | 8.530 | exact DP = his reported 8.53 |
 | "take exactly 1 die" greedy | 9.693 | exact DP = MC |
@@ -32,8 +37,9 @@ simulators.
   good approximation (~0.4 pts / 5% above optimal), not the true optimum.
 - **Perfect game (score 0):** **0.161%** (≈1 in 620) under optimal (expected-score)
   play; **0.445%** (≈1 in 225) under the policy that *maximizes* perfect-game odds
-  (≈ "bank every max-faced die," occasionally keeping one). Note: contrary to a
-  remark in Fetterman's paper, this probability is strategy-*dependent*.
+  (≈ "bank every max-faced die," occasionally keeping one). This probability is
+  strategy-*dependent*: Fetterman's 2022 paper guessed it "likely strategy-independent,"
+  but his 2025 follow-up and this repo both show it is not (see *Relation to prior work*).
 
 ## Competitive play (lowest score wins, N players)
 
@@ -77,13 +83,27 @@ the move is `keep the subset K maximizing U[K][g+banked]` (just as `V` drives th
 mean-optimal move). Bump the `maxN` arg to also emit N = 6/8 tables (long run).
 
 ## Relation to prior work
-The only prior analysis is Dave Fetterman's note *"Strategy for biscuits (a dice
-game)"* (2022). We reproduced his per-die thresholds (Fig. 7) exactly, confirmed his
-simulated 8.53 via exact DP, **solved the true optimum he left open** (he sketched
-the 104-state DP but didn't run it), and **corrected** his perfect-game claim. The
-single-die sub-problem is the classic Cayley/optimal-stopping "die problem"; the
-closest published analog to the full game is arXiv:2406.14700 ("set aside ≥1 coin
-each round").
+The prior analysis is Dave Fetterman's two notes on *bitches*, the original edition
+of the same game:
+
+- [*"Strategy for bitches (a dice game)"*](http://fettermania.com/math/bdice.pdf)
+  (2022) — the expected-score problem. We reproduced his per-die thresholds (Fig. 7)
+  exactly, confirmed his simulated 8.53 via exact DP, and **solved the true
+  mean-optimum he left open** (he sketched the 104-state DP but didn't run it): 8.088.
+- [*"BADG 2: A Perfect Game"*](https://www.fettermania.com/math/bdice2.pdf) (2025) —
+  the perfect-game problem. His 2022 note had guessed the perfect-game probability was
+  "likely strategy-independent"; this 2025 follow-up corrects that itself, proving the
+  naive "always bank every max" policy is *not* optimal (§1.2, "Mistake 1"). Our
+  `maxperfect` reaches the same conclusion independently, and its value
+  (4.445638e-03) matches his 2025 optimum (0.0044456381) to 6 significant figures.
+  Note `perfect` answers a different question — the perfect-game odds *under the
+  mean-optimal policy* (1.613223e-03) — which is lower precisely because that policy
+  banks sub-max dice.
+
+The single-die sub-problem is the classic Cayley/optimal-stopping "die problem"; the
+closest published academic analog is Wouter van Doorn's [*"On maximizing the number of
+heads when you need to set aside at least one coin every round"*](https://arxiv.org/abs/2406.14700)
+(arXiv:2406.14700, 2024) — a binary-outcome cousin of the same "bank ≥1 each round" structure.
 
 ## Files
 
