@@ -90,8 +90,14 @@ int main(int argc, char** argv){
                 int k6 = 0;
                 while(k6 < d6 && (float)pe[k6+1] > keepThreshold[b][k6+1]) k6++;   // threshold scan
                 int bigFull = (k8 == d8 && k10 == d10 && k12 == d12);
-                if(bigFull && k6 == d6) k6--;   // can't keep everything
-                if(k6 < 0) k6 = 0;
+                if(bigFull && k6 == d6){
+                    // Keeping every big die AND every d6 = the whole hand, which
+                    // banks nothing (illegal). Drop a d6 if we have one; otherwise
+                    // this config is unfixable here — a legal move must bank a big
+                    // die, which a different (non-bigFull) config already covers.
+                    if(d6 == 0) continue;
+                    k6--;
+                }
                 float v = (float)topPenSum6[k6] + bigKept - (float)V[k6*8 + b];
                 if(v > best){
                     best = v;
